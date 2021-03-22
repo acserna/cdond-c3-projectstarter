@@ -132,6 +132,7 @@ jobs:
           name: Check for vulnerabilities backend
           command: |
             cd backend
+            npm install
             npm audit fix --audit-level=critical --force
 
 workflows:
