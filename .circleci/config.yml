@@ -31,7 +31,7 @@ commands:
             echo ${MIGRATION_RESULT}
             if [[ $MIGRATION_RESULT = success ]] 
             then
-              cd ~/project/backend
+              cd ~/backend
               npm install
               npm run migrations:revert
             fi
@@ -219,11 +219,93 @@ jobs:
             echo "$IP_BACKEND"
             echo "$IP_BACKEND" >> .circleci/ansible/inventory.txt
             cat .circleci/ansible/inventory.txt
+
+            echo "$IP_BACKEND" > ip_backend.text
       - run:
           name: Configure server
           command: |
             ansible-playbook -i .circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
 
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
+      - persist_to_workspace:
+          root: . #~/
+          paths:
+            - ip_backend.txt
+
+  run-migrations:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      # Checkout code from git
+      - checkout
+      - run:
+          name: Install AWS CLI dependencies
+          command: |
+            sudo apt-get update && sudo apt-get install -yy less
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+      - run:
+          name: Run migrations
+          #no_output_timeout: 10m
+          command: |
+            cd backend
+            npm run migrations > ~/migration_result.txt
+      - run:
+          name: Send migration results to memstash
+          command: |
+            cat ~/migration_result.txt
+            echo migration_${CIRCLE_WORKFLOW_ID:0:7}
+            if grep -q "has been executed successfully" ~/migration_result.txt
+            then
+              echo "DB migration was successful, will update memstash..."
+              curl -H "Content-Type: text/plain" -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request PUT --data "success" https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}
+            else
+              echo "DB migration failed, please verify setup! Probably the database already exists. Verify setup!"
+              curl -H "Content-Type: text/plain" -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request PUT --data "failed" https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}
+            fi
+     # Here's where you will add some code to rollback on failure
+     - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
+  deploy-frontend:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            yum install -y tar gzip
+            curl -sL https://rpm.nodesource.com/setup_lts.x | bash -
+            yum -y install nodejs
+      - attach_workspace:
+          at: .
+      - run:
+          name: Get backend url
+          command: |
+            cat ip_backend.txt
+            BACKEND_IP=$(cat ip_backend.txt)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "${API_URL}"
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm i
+            npm run build
+            aws s3 cp ./dist s3://"udapeople-${CIRCLE_WORKFLOW_ID:0:7}" --recursive
+      # Here's where you will add some code to rollback on failure
+      - persist_to_workspace:
+          root: .
+          paths:
+            - frontend/dist
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations:
@@ -259,3 +341,7 @@ workflows:
               only: [master]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
+      - deploy-frontend:
+          requires: [run-migrations]
