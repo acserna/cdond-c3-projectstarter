@@ -215,7 +215,9 @@ jobs:
           command: |
             # echo "[web]" > .circleci/ansible/inventory.txt
             IP_BACKEND = $(curl -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request GET https://api.memstash.io/values/acsr)
-            echo "${IP_BACKEND}" >> .circleci/ansible/inventory.txt
+            echo $IP_BACKEND
+            echo "$IP_BACKEND"
+            echo "$IP_BACKEND" >> .circleci/ansible/inventory.txt
             cat .circleci/ansible/inventory.txt
       - run:
           name: Configure server
