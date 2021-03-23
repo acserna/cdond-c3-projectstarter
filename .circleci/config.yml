@@ -25,6 +25,7 @@ commands:
       - run:
           name: Revert migrations
           # Add when this will run
+          when: on_fail
           command: |
             MIGRATION_RESULT=$(curl -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request GET https://api.memstash.io/values/migration_<< parameters.workflow_id >>)
             echo ${MIGRATION_RESULT}
@@ -190,6 +191,42 @@ jobs:
             - inventory.txt #project/.circleci/ansible/inventory.txt
       # Here's where you will add some code to rollback on failure
 
+  configure-infrastructure:
+    docker:
+      - image: python:3.7-alpine3.11
+    steps:
+      # Checkout code from git
+      - checkout
+      # Add ssh keys with fingerprint
+      - add_ssh_keys:
+        fingerprints: ["43:0e:74:dc:51:2d:5b:b2:6f:78:47:ef:e0:db:26:70"]
+      # attach workspace
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update ansible nodejs npm
+            ansible --version
+            pip install awscli
+            aws --version
+      - run:
+          name: Update inventory.txt
+          command: |
+            # echo "[web]" > .circleci/ansible/inventory.txt
+            IP_BACKEND = $(curl -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request GET https://api.memstash.io/values/acsr)
+            echo "${IP_BACKEND}" >> .circleci/ansible/inventory.txt
+            cat .circleci/ansible/inventory.txt
+      - run:
+          name: Configure server
+          command: |
+            ansible-playbook -i .circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
+
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
 workflows:
   default:
     jobs:
@@ -216,3 +253,5 @@ workflows:
           filters:
             branches:
               only: [master]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
