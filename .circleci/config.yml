@@ -220,7 +220,7 @@ jobs:
             echo "$IP_BACKEND" >> .circleci/ansible/inventory.txt
             cat .circleci/ansible/inventory.txt
 
-            echo "$IP_BACKEND" > ip_backend.text
+            echo "$IP_BACKEND" > ip_backend.txt
       - run:
           name: Configure server
           command: |
