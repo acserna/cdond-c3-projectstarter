@@ -213,4 +213,4 @@ workflows:
           requires: [scan-frontend, scan-backend]
           filters:
             branches:
-              only: [test-feature-branch]
+              only: [master]
