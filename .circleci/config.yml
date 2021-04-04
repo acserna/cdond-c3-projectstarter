@@ -62,8 +62,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-build-<< pipeline.id >>]
-          keys: [backend-dist-<< pipeline.id >>]
+          keys: [backend-build-<< pipeline.id >>, backend-dist-<< pipeline.id >>]
       - run:
           name: Back-end build
           command: |
