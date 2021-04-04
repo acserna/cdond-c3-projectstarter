@@ -421,7 +421,7 @@ jobs:
             echo ${FRONTEND_URL}
             if curl -s ${FRONTEND_URL} | grep "Welcome"
             then
-              return 1
+              return 0
             else
               return 1
             fi
@@ -437,25 +437,25 @@ workflows:
       - build-frontend
       - build-backend
       
-      #- test-frontend:
-      #    requires:
-      #      - build-frontend
-      #      - build-backend
-      #- test-backend:
-      #    requires:
-      #      - build-frontend
-      #      - build-backend
-      #- scan-backend:
-      #    requires:
-      #      - test-frontend
-      #      - test-backend
-      #- scan-frontend:
-      #    requires:
-      #      - test-frontend
-      #      - test-backend
+      - test-frontend:
+          requires:
+            - build-frontend
+            - build-backend
+      - test-backend:
+          requires:
+            - build-frontend
+            - build-backend
+      - scan-backend:
+          requires:
+            - test-frontend
+            - test-backend
+      - scan-frontend:
+          requires:
+            - test-frontend
+            - test-backend
       - deploy-infrastructure:
-          #requires: [scan-frontend, scan-backend]
-          requires: [build-frontend, build-backend]
+          requires: [scan-frontend, scan-backend]
+          #requires: [build-frontend, build-backend]
           filters:
             branches:
               only: [master]
