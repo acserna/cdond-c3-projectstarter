@@ -63,6 +63,7 @@ jobs:
       - checkout
       - restore_cache:
           keys: [backend-build-<< pipeline.id >>]
+          keys: [backend-dist-<< pipeline.id >>]
       - run:
           name: Back-end build
           command: |
@@ -73,6 +74,9 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-build-<< pipeline.id >>
+      - save_cache:
+          paths: [backend/dist]
+          key: backend-dist-<< pipeline.id >>
 
   test-frontend:
     docker:
@@ -181,15 +185,16 @@ jobs:
             cat inventory.txt
             BACKEND_IP=$(cat inventory.txt)
             curl -H "Content-Type: text/plain" -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request PUT --data $BACKEND_IP https://api.memstash.io/values/acsr
+      
+      - persist_to_workspace:
+          root: .
+          paths:
+            - inventory.txt #project/.circleci/ansible/inventory.txt
+      # Here's where you will add some code to rollback on failure
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-      - persist_to_workspace:
-          root: . #~/
-          paths:
-            - inventory.txt #project/.circleci/ansible/inventory.txt
-      # Here's where you will add some code to rollback on failure
 
   configure-infrastructure:
     docker:
@@ -242,6 +247,8 @@ jobs:
     steps:
       # Checkout code from git
       - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Install AWS CLI dependencies
           command: |
@@ -271,8 +278,8 @@ jobs:
           #no_output_timeout: 10m
           command: |
             cd backend
-            npm install
-            npm run build
+            #npm install
+            #npm run build
 
             pwd
             echo " THIS IS .env CONTENTS:"
@@ -328,6 +335,8 @@ jobs:
           command: |
             cd frontend
             npm i
+            npm install oauth2
+            npm install webpack
             npm run build
             aws s3 cp ./dist s3://"udapeople-${CIRCLE_WORKFLOW_ID:0:7}" --recursive
       # Here's where you will add some code to rollback on failure
@@ -356,10 +365,18 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible curl rsync nodejs rpm openssh
+            apk add --update ansible curl rsync nodejs rpm openssh npm tar gzip
             ansible --version
             pip install awscli
             aws --version
+      - restore_cache:
+          keys: ["backend-dist-<< pipeline.id >>", "backend-build-<< pipeline.id >>"]
+      - run:
+          name: Compress dist Files
+          command: |
+            pwd
+            ls
+            tar czf /home/backend.tar.gz -P ./backend
       - run:
           name: Deploy backend
           command: |
@@ -368,16 +385,7 @@ jobs:
             cat inventory.txt
             cat .circleci/ansible/inventory.txt
             
-            echo ENVIROMENT=production >> "backend/.env"
-            echo TYPEORM_CONNECTION=postgres >> "backend/.env"
-            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
-            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
-            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> "backend/.env"
-            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
-            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
-            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
-            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
-            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
+            
             cd .circleci/ansible
             export ANSIBLE_HOST_KEY_CHECKING=False
             ansible-playbook -i inventory.txt deploy-backend.yml -vv
