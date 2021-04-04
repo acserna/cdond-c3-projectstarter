@@ -363,8 +363,11 @@ jobs:
       - run:
           name: Deploy backend
           command: |
+            cat inventory.txt >> .circleci/ansible/inventory.txt
+
             cat inventory.txt
-            cp inventory.txt .circleci/ansible
+            cat .circleci/ansible/inventory.txt
+            
             echo ENVIROMENT=production >> "backend/.env"
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
