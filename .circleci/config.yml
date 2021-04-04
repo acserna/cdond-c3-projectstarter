@@ -393,6 +393,8 @@ jobs:
             pwd
             ls
             ls ./backend
+            mv /home/circleci/project/backend/node_modules ./backend/
+            mv /home/circleci/project/backend/dist ./backend/
             tar czf /home/backend.tar.gz -P ./backend
       - run:
           name: Deploy backend
