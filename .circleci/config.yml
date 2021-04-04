@@ -43,10 +43,20 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: ["frontend-build-<< pipeline.id >>"]
+          keys: ["frontend-build"]
+      - restore_cache:
+          keys: ["backend-dist"]
+      - restore_cache:
+          keys: ["backend-build"]
       - run:
           name: Build front-end
           command: |
+            pwd
+            ls
+            cd backend
+            pwd
+            ls
+            cd ..
             cd frontend
             # I must install the dependencies
             sudo npm install webpack-dev-server -g
@@ -54,7 +64,7 @@ jobs:
             sudo npm run build
       - save_cache:
           paths: [frontend/node_modules]
-          key: frontend-build-<< pipeline.id >>
+          key: frontend-build
 
   build-backend:
     docker:
@@ -62,7 +72,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: ["backend-build-<< pipeline.id >>", "backend-dist-<< pipeline.id >>"]
+          keys: ["backend-build", "backend-dist"]
       - run:
           name: Back-end build
           command: |
@@ -72,10 +82,10 @@ jobs:
             npm run build
       - save_cache:
           paths: [backend/node_modules]
-          key: backend-build-<< pipeline.id >>
+          key: backend-build
       - save_cache:
           paths: [backend/dist]
-          key: backend-dist-<< pipeline.id >>
+          key: backend-dist
 
   test-frontend:
     docker:
@@ -85,7 +95,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: ["frontend-build-<< pipeline.id >>"]
+          keys: ["frontend-build"]
       # Your job code here
       - run:
           name: Run test-frontend
@@ -101,7 +111,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: ["backend-build-<< pipeline.id >>"]
+          keys: ["backend-build"]
       # Your job code here
       - run:
           name: Run test-backend
@@ -117,7 +127,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: ["frontend-build-<< pipeline.id >>"]
+          keys: ["frontend-build"]
       # Your job code here
       - run:
           name: Check for vulnerabilities frontend
@@ -133,7 +143,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: ["backend-build-<< pipeline.id >>"]
+          keys: ["backend-build"]
       # Your job code here
       - run:
           name: Check for vulnerabilities backend
@@ -249,7 +259,7 @@ jobs:
       - attach_workspace:
           at: .
       - restore_cache:
-          keys: ["backend-dist-<< pipeline.id >>", "backend-build-<< pipeline.id >>"]
+          keys: ["backend-dist", "backend-build"]
       - run:
           name: Install AWS CLI dependencies
           command: |
@@ -375,7 +385,7 @@ jobs:
             pip install awscli
             aws --version
       - restore_cache:
-          keys: ["backend-dist-<< pipeline.id >>", "backend-build-<< pipeline.id >>"]
+          keys: ["backend-dist", "backend-build"]
       - run:
           name: Compress dist Files
           command: |
@@ -447,8 +457,11 @@ jobs:
 workflows:
   default:
     jobs:
-      - build-frontend
       - build-backend
+      - build-frontend
+          requires:
+            - build-backend
+      
       
       #- test-frontend:
       #    requires:
@@ -466,19 +479,20 @@ workflows:
       #    requires:
       #      - test-frontend
       #      - test-backend
-      - deploy-infrastructure:
-          #requires: [scan-frontend, scan-backend]
-          requires: [build-frontend, build-backend]
-          filters:
-            branches:
-              only: [master]
-      - configure-infrastructure:
-          requires: [deploy-infrastructure]
-      - run-migrations:
-          requires: [configure-infrastructure]
-      - deploy-frontend:
-          requires: [run-migrations]
-      - deploy-backend:
-          requires: [run-migrations]
+      
+      #- deploy-infrastructure:
+      #    #requires: [scan-frontend, scan-backend]
+      #    requires: [build-frontend, build-backend]
+      #    filters:
+      #      branches:
+      #        only: [master]
+      #- configure-infrastructure:
+      #    requires: [deploy-infrastructure]
+      #- run-migrations:
+      #    requires: [configure-infrastructure]
+      #- deploy-frontend:
+      #    requires: [run-migrations]
+      #- deploy-backend:
+      #    requires: [run-migrations]
       #- smoke-test:
       #    requires: [deploy-backend, deploy-frontend]
