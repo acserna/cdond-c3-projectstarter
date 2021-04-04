@@ -43,7 +43,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [frontend-build-<< pipeline.id >>]
+          keys: ["frontend-build-<< pipeline.id >>"]
       - run:
           name: Build front-end
           command: |
@@ -62,7 +62,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-build-<< pipeline.id >>, backend-dist-<< pipeline.id >>]
+          keys: ["backend-build-<< pipeline.id >>", "backend-dist-<< pipeline.id >>"]
       - run:
           name: Back-end build
           command: |
@@ -85,7 +85,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: [frontend-build-<< pipeline.id >>]
+          keys: ["frontend-build-<< pipeline.id >>"]
       # Your job code here
       - run:
           name: Run test-frontend
@@ -101,7 +101,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: [backend-build-<< pipeline.id >>]
+          keys: ["backend-build-<< pipeline.id >>"]
       # Your job code here
       - run:
           name: Run test-backend
@@ -117,7 +117,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: [frontend-build-<< pipeline.id >>]
+          keys: ["frontend-build-<< pipeline.id >>"]
       # Your job code here
       - run:
           name: Check for vulnerabilities frontend
@@ -133,7 +133,7 @@ jobs:
       - checkout
       # Restore from cache
       - restore_cache:
-          keys: [backend-build-<< pipeline.id >>]
+          keys: ["backend-build-<< pipeline.id >>"]
       # Your job code here
       - run:
           name: Check for vulnerabilities backend
@@ -278,9 +278,13 @@ jobs:
           name: Run migrations
           #no_output_timeout: 10m
           command: |
+            pwd
+            ls
             cd backend
-            #npm install
-            #npm run build
+            pwd
+            ls
+            npm install
+            npm run build
 
             pwd
             echo " THIS IS .env CONTENTS:"
