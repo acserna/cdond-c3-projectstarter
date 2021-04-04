@@ -44,19 +44,9 @@ jobs:
       - checkout
       - restore_cache:
           keys: ["frontend-build"]
-      - restore_cache:
-          keys: ["backend-dist"]
-      - restore_cache:
-          keys: ["backend-build"]
       - run:
           name: Build front-end
           command: |
-            pwd
-            ls
-            cd backend
-            pwd
-            ls
-            cd ..
             cd frontend
             # I must install the dependencies
             sudo npm install webpack-dev-server -g
@@ -259,7 +249,9 @@ jobs:
       - attach_workspace:
           at: .
       - restore_cache:
-          keys: ["backend-dist", "backend-build"]
+          keys: ["backend-dist"]
+      - restore_cache:
+          keys: ["backend-build"]
       - run:
           name: Install AWS CLI dependencies
           command: |
@@ -293,8 +285,8 @@ jobs:
             cd backend
             pwd
             ls
-            npm install
-            npm run build
+            #npm install
+            #npm run build
 
             pwd
             echo " THIS IS .env CONTENTS:"
@@ -385,12 +377,15 @@ jobs:
             pip install awscli
             aws --version
       - restore_cache:
-          keys: ["backend-dist", "backend-build"]
+          keys: ["backend-dist"]
+      - restore_cache:
+          keys: ["backend-build"]
       - run:
           name: Compress dist Files
           command: |
             pwd
             ls
+            ls ./backend
             tar czf /home/backend.tar.gz -P ./backend
       - run:
           name: Deploy backend
@@ -457,10 +452,8 @@ jobs:
 workflows:
   default:
     jobs:
+      - build-frontend
       - build-backend
-      - build-frontend:
-          requires:
-            - build-backend
       
       
       #- test-frontend:
@@ -480,19 +473,19 @@ workflows:
       #      - test-frontend
       #      - test-backend
       
-      #- deploy-infrastructure:
-      #    #requires: [scan-frontend, scan-backend]
-      #    requires: [build-frontend, build-backend]
-      #    filters:
-      #      branches:
-      #        only: [master]
-      #- configure-infrastructure:
-      #    requires: [deploy-infrastructure]
-      #- run-migrations:
-      #    requires: [configure-infrastructure]
-      #- deploy-frontend:
-      #    requires: [run-migrations]
-      #- deploy-backend:
-      #    requires: [run-migrations]
+      - deploy-infrastructure:
+          #requires: [scan-frontend, scan-backend]
+          requires: [build-frontend, build-backend]
+          filters:
+            branches:
+              only: [master]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
+      - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
       #- smoke-test:
       #    requires: [deploy-backend, deploy-frontend]
