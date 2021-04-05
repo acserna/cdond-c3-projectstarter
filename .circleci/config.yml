@@ -484,14 +484,15 @@ jobs:
           command: |
             aws cloudformation \
             list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-            --no-paginate --output text > ~/deployment_id.txt
+            --no-paginate --output text > ~/PreviousWorkflowID.txt
 
             PreviousWorkflowID=$(aws cloudformation \
               list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
               --no-paginate --output text)
 
+            echo $PreviousWorkflowID
+
             curl -H "Content-Type: text/plain" -H "token: cbb69fca-040c-49b7-aa61-8d38c3b18a32" --request PUT --data "$PreviousWorkflowID" https://api.memstash.io/values/PreviousWorkflowID
-            echo $PreviousWorkflowID > PreviousWorkflowID.txt
 
             cat ~/PreviousWorkflowID.txt
       - run:
